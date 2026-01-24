@@ -1,0 +1,68 @@
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime
+
+# -------------------------
+# DAG CONFIGURATION
+# -------------------------
+
+default_args = {
+    "owner": "DE_Team",
+    "start_date": datetime(2025, 1, 1),
+    "retries": 1
+}
+
+with DAG(
+    dag_id="feature_store_ml_pipeline",
+    default_args=default_args,
+    schedule_interval=None,     # Manual run (perfect for university submission)
+    catchup=False,
+    description="End-to-end Feature Store, ML, and Research Pipeline"
+) as dag:
+
+    # -------------------------
+    # 1. Extract raw data
+    # -------------------------
+    extract_data = BashOperator(
+        task_id="extract_data",
+        bash_command="python src/data_ingestion/load_data.py"
+    )
+
+    # -------------------------
+    # 2. Clean & preprocess
+    # -------------------------
+    clean_data = BashOperator(
+        task_id="clean_data",
+        bash_command="python src/data_cleaning/clean_data.py"
+    )
+
+    # -------------------------
+    # 3. Feature Engineering
+    # (Feature Store layer)
+    # -------------------------
+    build_features = BashOperator(
+        task_id="build_features",
+        bash_command="python src/feature_engineering/build_features.py"
+    )
+
+    # -------------------------
+    # 4. Train ML model
+    # -------------------------
+    train_model = BashOperator(
+        task_id="train_model",
+        bash_command="python src/modeling/train_model.py"
+    )
+
+    # -------------------------
+    # 5. Generate figures & tables
+    # (Research outputs)
+    # -------------------------
+    generate_outputs = BashOperator(
+        task_id="generate_figures_and_tables",
+        bash_command="python src/evaluation/generate_outputs.py"
+    )
+
+    # -------------------------
+    # Pipeline dependencies
+    # -------------------------
+    extract_data >> clean_data >> build_features >> train_model >> generate_outputs
